@@ -65,7 +65,7 @@
     host = "127.0.0.1:11434";
 
     # Model pulled on activation when missing
-    model = "qwen3-coder:14b";
+    model = "qwen3-coder:30b";
 
     # OLLAMA_MODELS store; null → "<home>/.ollama/models"
     modelsDir = null;

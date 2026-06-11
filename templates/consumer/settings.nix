@@ -15,6 +15,6 @@
   };
 
   # Optional nested overrides (uncomment to change nixotine defaults):
-  # ollama.model = "qwen3-coder:14b";
+  # ollama.model = "qwen3-coder:30b";
   # linuxBuilder.cores = 8;
 }
