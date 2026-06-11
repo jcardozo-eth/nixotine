@@ -51,7 +51,7 @@
 
         if ! ollama_ready; then
           echo "warning: ollama unreachable; run 'ollama pull ${ollama.model}' later"
-        elif ! ollama list | awk '{ print $1 }' | grep -qxF "${ollama.model}"; then
+        elif ! ollama list | ${pkgs.gawk}/bin/awk '{ print $1 }' | grep -qxF "${ollama.model}"; then
           run ollama pull ${ollama.model} || echo "warning: 'ollama pull ${ollama.model}' failed; retry later"
         fi
       '';
