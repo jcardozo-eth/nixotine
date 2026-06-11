@@ -1,0 +1,16 @@
+name: check
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - run: nix flake check
+      - run: nix fmt -- --check .
+      - run: "nix eval .#darwinConfigurations --apply 'c: (builtins.head (builtins.attrValues c)).system.drvPath'"
