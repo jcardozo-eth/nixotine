@@ -7,30 +7,9 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 default:
     @just --list
 
-# Resolve the single darwin configuration's hostname (honors settings.local.nix)
+# Resolve the single darwin configuration's hostname
 _host:
     @nix eval --raw .#darwinConfigurations --apply 'c: builtins.head (builtins.attrNames c)'
-
-# Scaffold local override files for personal settings and packages
-init-local:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    created=()
-    for f in settings.local.nix module.local.nix; do
-      if [ -e "$f" ]; then
-        echo "$f exists, leaving it"
-      else
-        cp "templates/$f" "$f"
-        created+=("$f")
-        echo "created $f"
-      fi
-    done
-    if [ "${#created[@]}" -gt 0 ]; then
-      echo
-      echo "These files are gitignored. To track them in your fork (required for the"
-      echo "build to see them), force-add once, then edit and apply:"
-      echo "  git add -f ${created[*]}"
-    fi
 
 # Build the configuration without switching
 build:
