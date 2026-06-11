@@ -161,9 +161,12 @@
       darwinConfigurations.${settings.hostname} = mkDarwin settings;
 
       # Formatter for both the dev machine (aarch64-darwin) and the CI runner
-      # (x86_64-linux, ubuntu-latest), so `nix fmt -- --check` works in both.
+      # (x86_64-linux, ubuntu-latest). nixfmt-tree wraps nixfmt in treefmt, which
+      # walks the git tree and honours .gitignore — so `nix fmt` skips vendored
+      # sources under .direnv/ that plain nixfmt would try (and fail) to format.
+      # Check mode is `nix fmt -- --ci` (exits non-zero on any change).
       formatter = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" ] (
-        system: nixpkgs.legacyPackages.${system}.nixfmt-rfc-style
+        system: nixpkgs.legacyPackages.${system}.nixfmt-tree
       );
 
       # `nix develop` (or direnv via the tracked .envrc) puts `just` on PATH

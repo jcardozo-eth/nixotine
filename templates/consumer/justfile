@@ -40,7 +40,7 @@ eval:
 # Run flake checks
 check:
     nix flake check
-    nix fmt -- --check .
+    nix fmt -- --ci
 
 # Format Nix files
 fmt:

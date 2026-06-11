@@ -26,7 +26,7 @@ eval:
 # Flake checks: eval + formatting
 check:
     nix flake check
-    nix fmt -- --check .
+    nix fmt -- --ci
 
 # Format all Nix files in place
 fmt:
