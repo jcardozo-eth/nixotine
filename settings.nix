@@ -20,21 +20,11 @@
     userName = "Your Name";
     userEmail = "you@example.com";
 
-    # Per-host identity routing. For each entry git.nix generates includeIf
+    # Per-host identity routing. Each entry makes git.nix generate includeIf
     # rules (ssh / scp / https URL forms) pointing at a local, untracked
-    # ~/.config/git/<file>; drop a [user] block there to use a different
-    # identity for that host. Add or replace hosts freely (an organization's
-    # git host, a self-hosted forge, …) — nothing here is github/gitlab-specific.
-    hosts = [
-      {
-        host = "github.com";
-        file = "github.gitconfig";
-      }
-      {
-        host = "gitlab.com";
-        file = "gitlab.gitconfig";
-      }
-    ];
+    # ~/.config/git/<file>; drop a [user] block there for that host's identity.
+    # Empty by default; consumers add the hosts they use.
+    hosts = [ ];
   };
 
   # Linux builder VM (nix-darwin) for transparent aarch64-linux cross-builds.
