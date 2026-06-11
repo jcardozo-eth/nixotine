@@ -19,21 +19,6 @@ build:
     command -v darwin-rebuild >/dev/null 2>&1 || { echo "error: darwin-rebuild not on PATH." >&2; exit 1; }
     darwin-rebuild build --flake ".#$(just _host)"
 
-# Apply the configuration
-apply:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    [[ "$OSTYPE" == darwin* ]] || { echo "error: apply requires macOS (darwin)." >&2; exit 1; }
-    command -v darwin-rebuild >/dev/null 2>&1 || { echo "error: darwin-rebuild not on PATH." >&2; exit 1; }
-    host=$(just _host)
-    echo "About to 'darwin-rebuild switch' host '${host}'."
-    echo "This activates the ENTIRE configuration on this machine: system settings,"
-    echo "packages, Homebrew casks, login shell, launchd agents, and git identity."
-    echo "For the generic upstream config these are placeholders, not a real setup."
-    read -r -p "Continue? [y/N] " reply
-    [[ "$reply" == [yY] ]] || { echo "aborted."; exit 1; }
-    sudo darwin-rebuild switch --flake ".#${host}"
-
 # Evaluate the system derivation path
 eval:
     nix eval ".#darwinConfigurations.$(just _host).system.drvPath"
