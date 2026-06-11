@@ -25,7 +25,7 @@ in
     enable = true;
 
     # Default identity comes from settings (generic placeholder upstream; real
-    # values come from a fork's settings.local.nix or mkDarwin's `git` arg).
+    # values come from mkDarwin's `git` arg in a consumer flake).
     userName = git.userName;
     userEmail = git.userEmail;
 

@@ -1,8 +1,7 @@
-# Default settings for the public upstream — generic placeholders meant to be
-# overridden in a private fork (see README "Customizing a fork"). This is the
-# only file to edit to adapt the configuration to a machine/user; flake.nix
+# Default settings for the public upstream: generic placeholders, overridden by a
+# consumer's mkDarwin arguments (see README "Use as a flake library"). flake.nix
 # derives the home directory, the darwin-rebuild target, and the Home Manager
-# user from it.
+# user from these.
 {
   # Login name of the primary user (also the Home Manager user)
   username = "user";
@@ -14,9 +13,9 @@
   # modules (Homebrew prefix, the aarch64-linux builder) assume it.
   system = "aarch64-darwin";
 
-  # Default git identity. Generic placeholder here — set a real name/email in a
-  # fork's settings.local.nix, or pass `git = { … }` to mkDarwin.
-  # Per-host identities (and signing) live in local, untracked files.
+  # Default git identity. Generic placeholder here — pass `git = { … }` to
+  # mkDarwin to set a real name/email. Per-host identities (and signing) live in
+  # local, untracked files.
   git = {
     userName = "Your Name";
     userEmail = "you@example.com";
