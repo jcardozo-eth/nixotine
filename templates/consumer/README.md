@@ -16,24 +16,30 @@ A personal [nix-darwin] + [Home Manager] configuration built on
 
 ## Setup
 
+The steps below use the `just` recipes (on PATH through the bundled `.envrc` with
+[direnv], or `nix develop`); see [Tasks](#tasks) for the full list.
+
 1. Edit `settings.nix`: set `username` (the macOS login name) and the `git`
    identity. The `mac` in `darwinConfigurations.mac` is just the label for
    `darwin-rebuild --flake .#mac`, not a real hostname; rename it freely (along
-   with the `.#mac` below) or leave it as-is. For multiple git identities (a
+   with the `.#mac` references) or leave it as-is. For multiple git identities (a
    different name/email per host) and SSH key setup, see nixotine's
    [identity and SSH guide].
 2. Edit `module.nix`: add casks and packages.
-3. Verify (this builds in the Nix store and does not touch the machine):
+3. Check that it evaluates and is formatted (harmless — nothing is activated):
 
    ```sh
-   nix flake check
-   nix eval .#darwinConfigurations.mac.system.drvPath
-   darwin-rebuild build --flake .#mac
+   just check
    ```
-4. Activate:
+4. Build the system in the Nix store, without activating it:
 
    ```sh
-   sudo darwin-rebuild switch --flake .#mac
+   just build
+   ```
+5. Activate it on this machine (prompts before switching):
+
+   ```sh
+   just apply
    ```
 
 ## Tasks
@@ -80,8 +86,10 @@ because flake inputs are fetched before evaluation and cannot live in
 
 ## Updating
 
+Bump nixotine to its latest commit (rewrites `flake.lock`):
+
 ```sh
-nix flake update nixotine   # bump nixotine to its latest commit (or: just update)
+just update
 ```
 
 [nix-darwin]: https://github.com/LnL7/nix-darwin
