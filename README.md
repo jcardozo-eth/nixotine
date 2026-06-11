@@ -187,62 +187,68 @@ explains what those scaffolded files contain; the same shape can also be written
 by hand.
 
 ```nix
-# example/flake.nix
+# flake.nix — thin; rarely edited
 {
   inputs.nixotine.url = "github:jcardozo-eth/nixotine";
   outputs = { nixotine, ... }: {
-    darwinConfigurations.mac = nixotine.lib.mkDarwin {
-      username = "youruser"; # required
-      system = "aarch64-darwin"; # required
-      # Optional below — override any settings.nix default (partial is fine):
-      git = {
-        userName = "yourgituser";
-        userEmail = "name@domain.com";
-      };
-      ollama = { model = "qwen3-coder:14b"; };
-      extraModules = [ ./module.nix ]; # extra casks/packages
-    };
+    darwinConfigurations.mac = nixotine.lib.mkDarwin (
+      import ./settings.nix // { extraModules = [ ./module.nix ]; }
+    );
   };
 }
 ```
 
-`mkDarwin` returns a full nix-darwin system and forwards its inputs
-(home-manager, pi-nix). `extraModules` are appended after the base modules, and
-because nix-darwin / Home Manager list options **merge**, casks and packages can
-be extended from a separate module without touching this repo:
+`settings.nix` holds the machine parameters. Only `username` and `system` are
+required; any other key overrides a nixotine default (partial is fine):
 
 ```nix
-# example/module.nix
-{ pkgs, ... }:
+# settings.nix
 {
-  # list options merge with the base, so these extend it rather than replace it
-  homebrew.casks = [ "your-app" ];
-  home-manager.users.youruser.home.packages = [ pkgs.your-tool ];
+  username = "youruser"; # required
+  system = "aarch64-darwin"; # required
+  git = {
+    userName = "yourgituser";
+    userEmail = "name@domain.com";
+  };
+  # ollama.model = "qwen3-coder:14b";
 }
 ```
 
-`settings.nix` here only supplies the generic defaults for the demo/CI build and
-the fallback values in `mkDarwin`'s signature. It isn't edited.
-
-**Packages from another flake.** Pulling a package from a *different* flake
-(anything with a flake output, e.g. `devenv`) needs no change to nixotine: the
-input lives in the consumer's own flake. Declare it there alongside `nixotine`,
-then thread it into the module with `_module.args`:
+`mkDarwin` returns a full nix-darwin system and forwards its inputs (home-manager,
+pi-nix). `extraModules` are appended after the base modules, and because
+nix-darwin / Home Manager list options **merge**, casks and packages extend the
+base from `module.nix` without touching this repo:
 
 ```nix
-# example/flake.nix
+# module.nix
+{ pkgs, ... }:
+{
+  # list options merge with the base, so these extend it rather than replace it
+  homebrew.casks = [ "firefox" ];
+  home-manager.users.youruser.home.packages = [ pkgs.ripgrep ];
+}
+```
+
+**Packages from another flake.** Pulling a package from a *different* flake (for
+example [devenv](https://github.com/cachix/devenv)) needs no change to nixotine:
+the input lives in the consumer's own flake. Declare it there alongside
+`nixotine`, then thread it into the module with `_module.args`:
+
+```nix
+# flake.nix
 {
   inputs.nixotine.url = "github:jcardozo-eth/nixotine";
-  inputs.some-flake.url = "github:owner/some-flake";
-  outputs = { nixotine, some-flake, ... }: {
-    darwinConfigurations.mac = nixotine.lib.mkDarwin {
-      username = "youruser";
-      system = "aarch64-darwin";
-      extraModules = [
-        ./module.nix
-        { _module.args.some-flake = some-flake; } # pass the extra input to modules
-      ];
-    };
+  inputs.devenv.url = "github:cachix/devenv";
+  outputs = { nixotine, devenv, ... }: {
+    darwinConfigurations.mac = nixotine.lib.mkDarwin (
+      import ./settings.nix
+      // {
+        extraModules = [
+          ./module.nix
+          { _module.args.devenv = devenv; } # pass the extra input to modules
+        ];
+      }
+    );
   };
 }
 ```
@@ -250,19 +256,19 @@ then thread it into the module with `_module.args`:
 `module.nix` then receives it as a module argument:
 
 ```nix
-{ some-flake, pkgs, ... }:
+{ devenv, pkgs, ... }:
 {
   home-manager.users.youruser.home.packages = [
-    some-flake.packages.${pkgs.system}.default
+    devenv.packages.${pkgs.system}.devenv
   ];
 }
 ```
 
 ### Forking nixotine
 
-Fork nixotine to change the configuration *itself* (a module, a default, or a new
-generic feature), whether to contribute the change upstream or to run a personal
-variant. A fork is nixotine's own source; it holds no machine configuration.
+Fork nixotine to customize the configuration *itself* — change a module, a
+default, or add a generic feature — and run that personal variant. A fork is
+nixotine's own source; it holds no machine configuration.
 
 Running a machine on a forked nixotine keeps two repositories:
 
