@@ -30,6 +30,23 @@ nix fmt -- --check .
 nix eval .#darwinConfigurations --apply 'c: (builtins.head (builtins.attrValues c)).system.drvPath'
 ```
 
+The `justfile` wraps these (with `just` on PATH via `nix develop` or direnv):
+
+| Recipe | Action |
+|--------|--------|
+| `just build` | build the configuration without switching |
+| `just eval` | print the system derivation path |
+| `just check` | `nix flake check` + format check |
+| `just fmt` | format all Nix files |
+| `just update` | update flake inputs |
+| `just sync` | `git pull upstream main` |
+
+The repo's `darwinConfigurations.mac` uses generic placeholder settings, so
+`nix eval` and `darwin-rebuild build` are harmless — they compute the system in
+the Nix store without touching the machine. Never `switch` it, though: that would
+activate the placeholder identity and settings. A real machine is activated from
+a consumer flake.
+
 ## CI and automation
 
 Three pieces of [GitHub](https://docs.github.com/actions) automation keep the
