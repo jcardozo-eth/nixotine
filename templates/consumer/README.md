@@ -11,6 +11,8 @@ A personal [nix-darwin] + [Home Manager] configuration built on
   and any other override of a nixotine default.
 - **`module.nix`** — this machine's Homebrew casks and packages. The file to edit
   for package changes.
+- **`justfile`** — `just` recipes for the common workflow (`build`, `apply`,
+  `eval`, `check`, `update`); `nix develop` or direnv puts `just` on PATH.
 
 ## Setup
 
@@ -33,6 +35,20 @@ A personal [nix-darwin] + [Home Manager] configuration built on
    ```sh
    sudo darwin-rebuild switch --flake .#mac
    ```
+
+## Tasks
+
+`just` (on PATH via `nix develop`, or automatically with [direnv] through the
+bundled `.envrc`) wraps the common workflow:
+
+| Recipe | Action |
+|--------|--------|
+| `just build` | build the configuration without switching |
+| `just apply` | activate the entire machine (prompts first) |
+| `just eval` | print the system derivation path |
+| `just check` | `nix flake check` + format check |
+| `just fmt` | format all Nix files |
+| `just update` | bump nixotine to its latest commit |
 
 ## Adding a package from another flake
 
@@ -65,9 +81,10 @@ because flake inputs are fetched before evaluation and cannot live in
 ## Updating
 
 ```sh
-nix flake update nixotine   # bump nixotine to its latest commit
+nix flake update nixotine   # bump nixotine to its latest commit (or: just update)
 ```
 
 [nix-darwin]: https://github.com/LnL7/nix-darwin
 [Home Manager]: https://github.com/nix-community/home-manager
+[direnv]: https://direnv.net
 [identity and SSH guide]: https://github.com/jcardozo-eth/nixotine#local-identity-and-ssh-files
