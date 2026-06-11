@@ -1,0 +1,10 @@
+.DS_Store
+.idea/
+.direnv/
+result
+result-*
+
+# Local, untracked Nix settings/module overrides (repo-root drop-ins read by
+# flake.nix; anchored so the templates/ scaffolds with the same names still track)
+/settings.local.nix
+/module.local.nix
