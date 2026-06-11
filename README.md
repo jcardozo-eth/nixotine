@@ -161,10 +161,10 @@ There are two ways to build on this configuration:
   flake inputs live in that flake's *own* repo, fully tracked and entirely
   separate from nixotine, so updates never conflict and nixotine is never edited.
   Best for almost everyone, and the bundled `nix flake new` template scaffolds it.
-- **[Fork nixotine](#forking-nixotine)** — change nixotine *itself* (its modules
-  or defaults), to contribute upstream or run a personal variant. A fork holds no
-  machine configuration: a consumer flake points its `nixotine.url` at the fork
-  (or a local checkout) and keeps the machine configuration there.
+- **[Fork nixotine](#forking-nixotine)** — customize nixotine *itself* (its
+  modules or defaults) and run that personal variant. A fork holds no machine
+  configuration: a consumer flake points its `nixotine.url` at the fork (or a
+  local checkout) and keeps the machine configuration there.
 
 ### Use as a flake library
 
@@ -270,39 +270,46 @@ Fork nixotine to customize the configuration *itself* — change a module, a
 default, or add a generic feature — and run that personal variant. A fork is
 nixotine's own source; it holds no machine configuration.
 
-Running a machine on a forked nixotine keeps two repositories:
+This means **two separate directories** on disk:
 
-1. **The fork** — the changed nixotine. Add `upstream` as a remote to pull in
-   later improvements:
+1. **Your fork of nixotine** — clone it somewhere, e.g. `~/cfg/nixotine`, and add
+   `upstream` so later improvements can be pulled in. This is where nixotine
+   itself is customized:
 
    ```sh
+   git clone https://github.com/youruser/nixotine ~/cfg/nixotine
+   cd ~/cfg/nixotine
    git remote add upstream https://github.com/jcardozo-eth/nixotine
    ```
 
-2. **A consumer flake** — the machine configuration, scaffolded from the
-   [template](#use-as-a-flake-library). Point its `nixotine.url` at the fork
-   instead of upstream:
+2. **Your machine configuration** — a *different* directory, e.g. `~/cfg/nixotine-darwin`,
+   scaffolded from the [template](#use-as-a-flake-library). In its `flake.nix`,
+   point `nixotine.url` at the fork instead of upstream:
 
    ```nix
+   # ~/cfg/nixotine-darwin/flake.nix
    nixotine.url = "github:youruser/nixotine";
-   # or, while hacking on nixotine and the machine together, a local checkout:
-   # nixotine.url = "path:/home/youruser/cfg/nixotine";
+   # or, to test fork changes before pushing, point at the local clone above
+   # (path: needs an absolute path):
+   # nixotine.url = "path:/Users/youruser/cfg/nixotine";
    ```
 
-Settings, casks, and packages live in the consumer flake exactly as for any
-consumer; only the nixotine source differs. A change to nixotine reaches the
-machine on the next `nix flake update nixotine`.
+Settings, casks, and packages live in `~/cfg/nixotine-darwin` exactly as for any consumer;
+only the nixotine source differs. A change pushed to the fork reaches the machine
+on the next `nix flake update nixotine`, run in `~/cfg/nixotine-darwin`.
+
+To contribute a change back upstream rather than keep it in a fork, see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Tasks**
 
-`just` (on PATH via `nix develop` or direnv) wraps the common workflow when
-working inside the fork. The target host comes from the effective
-configuration's `settings.nix` hostname.
+`just` (on PATH via `nix develop` or direnv) wraps the workflow for verifying a
+change to the fork; the machine itself is activated from the consumer flake, not
+here:
 
 | Recipe | Action |
 |--------|--------|
 | `just build` | build the configuration without switching |
-| `just apply` | activate the configuration |
 | `just eval` | print the system derivation path |
 | `just check` | `nix flake check` + format check |
 | `just fmt` | format all Nix files |
@@ -337,21 +344,14 @@ the consumer flake instead (see the consumer template's `README.md`).
 
 ### Applying the configuration
 
-Build and switch the configuration: from a fork with `just apply`, or from a
-consumer flake with `darwin-rebuild`:
-
-```sh
-sudo darwin-rebuild switch --flake .#<your-host>   # or, in a fork: just apply
-```
-
 This repo's own `darwinConfigurations.mac` is built from the **generic
 placeholder settings**, so it exists only to verify that the configuration
 evaluates and builds. Evaluating or building is harmless: it computes the system
 in the Nix store without touching the machine. Do **not** `switch` it on a local
 machine, though. `switch` *activates* the entire configuration on the machine —
 system settings, packages, Homebrew casks, login shell, launchd agents, and the
-placeholder username and git identity. Run `switch` only from a fork or consumer
-flake, where the settings hold real values.
+placeholder username and git identity. Run `switch` only from a consumer flake,
+where the settings hold real values.
 
 ```sh
 nix flake check
