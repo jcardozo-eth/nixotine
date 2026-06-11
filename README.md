@@ -7,8 +7,7 @@ An **opinionated and reusable** [nix-darwin](https://github.com/LnL7/nix-darwin)
 conventions; everything machine- and user-specific is configurable, so it
 can be adopted wholesale, cherry-picked from, or used as inspiration. The
 public repo ships generic defaults and exports a `mkDarwin` builder, so it can be
-[used as a flake library](#use-as-a-flake-library) or
-[forked](#forking-nixotine).
+[used as a flake library](#use-as-a-flake-library).
 
 > [!IMPORTANT]
 > Provided as is, without warranty, at the adopter's own risk. See
@@ -30,8 +29,6 @@ public repo ships generic defaults and exports a `mkDarwin` builder, so it can b
 - [Setup](#setup)
   - [Prerequisites](#prerequisites)
   - [Use as a flake library](#use-as-a-flake-library)
-  - [Forking nixotine](#forking-nixotine)
-  - [Applying the configuration](#applying-the-configuration)
   - [Local identity and SSH files](#local-identity-and-ssh-files)
 - [Architecture](#architecture)
   - [Module layout](#module-layout)
@@ -154,17 +151,11 @@ from macOS via Apple's Virtualization framework. Its resources are sized in
   `homebrew.enable = false`) removes the requirement entirely. The zsh PATH
   integration is independent and always degrades gracefully if brew is absent.
 
-There are two ways to build on this configuration:
-
-- **[Use it as a flake library](#use-as-a-flake-library)** (recommended) — pin
-  nixotine as an input from a separate flake. Settings, packages, and any extra
-  flake inputs live in that flake's *own* repo, fully tracked and entirely
-  separate from nixotine, so updates never conflict and nixotine is never edited.
-  Best for almost everyone, and the bundled `nix flake new` template scaffolds it.
-- **[Fork nixotine](#forking-nixotine)** — customize nixotine *itself* (its
-  modules or defaults) and run that personal variant. A fork holds no machine
-  configuration: a consumer flake points its `nixotine.url` at the fork (or a
-  local checkout) and keeps the machine configuration there.
+Build on nixotine by pinning it as a flake input from a separate flake and
+calling `mkDarwin`; the bundled `nix flake new` template scaffolds exactly that.
+Settings, packages, and any extra flake inputs live in that flake's *own* repo,
+fully tracked and separate from nixotine, so updates never conflict and nixotine
+is never edited.
 
 ### Use as a flake library
 
@@ -229,6 +220,10 @@ base from `module.nix` without touching this repo:
 }
 ```
 
+Then activate it from the configuration's own directory with `just apply`. The
+template's [README](templates/consumer/README.md) is a full walkthrough from
+setup to activation.
+
 **Packages from another flake.** Pulling a package from a *different* flake (for
 example [devenv](https://github.com/cachix/devenv)) needs no change to nixotine:
 the input lives in the consumer's own flake. Declare it there alongside
@@ -264,99 +259,15 @@ the input lives in the consumer's own flake. Declare it there alongside
 }
 ```
 
-### Forking nixotine
-
-Fork nixotine to customize the configuration *itself* — change a module, a
-default, or add a generic feature — and run that personal variant. A fork is
-nixotine's own source; it holds no machine configuration.
-
-This means **two separate directories** on disk:
-
-1. **Your fork of nixotine** — clone it somewhere, e.g. `~/cfg/nixotine`, and add
-   `upstream` so later improvements can be pulled in. This is where nixotine
-   itself is customized:
-
-   ```sh
-   git clone https://github.com/youruser/nixotine ~/cfg/nixotine
-   cd ~/cfg/nixotine
-   git remote add upstream https://github.com/jcardozo-eth/nixotine
-   ```
-
-2. **Your machine configuration** — a *different* directory, e.g. `~/cfg/nixotine-darwin`,
-   scaffolded from the [template](#use-as-a-flake-library). In its `flake.nix`,
-   point `nixotine.url` at the fork instead of upstream:
-
-   ```nix
-   # ~/cfg/nixotine-darwin/flake.nix
-   nixotine.url = "github:youruser/nixotine";
-   # or, to test fork changes before pushing, point at the local clone above
-   # (path: needs an absolute path):
-   # nixotine.url = "path:/Users/youruser/cfg/nixotine";
-   ```
-
-Settings, casks, and packages live in `~/cfg/nixotine-darwin` exactly as for any consumer;
-only the nixotine source differs. A change pushed to the fork reaches the machine
-on the next `nix flake update nixotine`, run in `~/cfg/nixotine-darwin`.
-
-To contribute a change back upstream rather than keep it in a fork, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
-
-**Tasks**
-
-`just` (on PATH via `nix develop` or direnv) wraps the workflow for verifying a
-change to the fork; the machine itself is activated from the consumer flake, not
-here:
-
-| Recipe | Action |
-|--------|--------|
-| `just build` | build the configuration without switching |
-| `just eval` | print the system derivation path |
-| `just check` | `nix flake check` + format check |
-| `just fmt` | format all Nix files |
-| `just update` | update flake inputs |
-| `just sync` | `git pull upstream main` |
-
-**Adding a flake input to the fork**
-
-An input that a fork's *own module* uses (because the feature belongs in nixotine
-itself) is declared in the fork's `flake.nix` `inputs`. Every input is threaded
-into the modules as the `inputs` argument, so a module references it as
-`inputs.<name>`, with no call-site or wiring change:
+**Using your own fork.** To customize nixotine itself, fork it; then in your
+configuration's `flake.nix` (the directory scaffolded from the template), point
+`nixotine.url` at your fork instead of upstream — nothing else changes:
 
 ```nix
-inputs = {
-  # … existing inputs …
-  some-flake.url = "github:owner/some-flake";
-};
-```
-
-```nix
-{ inputs, pkgs, ... }:
-{
-  home-manager.users.youruser.home.packages = [
-    inputs.some-flake.packages.${pkgs.system}.default
-  ];
-}
-```
-
-A package for a single machine does not belong in the fork: declare that input in
-the consumer flake instead (see the consumer template's `README.md`).
-
-### Applying the configuration
-
-This repo's own `darwinConfigurations.mac` is built from the **generic
-placeholder settings**, so it exists only to verify that the configuration
-evaluates and builds. Evaluating or building is harmless: it computes the system
-in the Nix store without touching the machine. Do **not** `switch` it on a local
-machine, though. `switch` *activates* the entire configuration on the machine —
-system settings, packages, Homebrew casks, login shell, launchd agents, and the
-placeholder username and git identity. Run `switch` only from a consumer flake,
-where the settings hold real values.
-
-```sh
-nix flake check
-nix eval .#darwinConfigurations.mac.system.drvPath
-darwin-rebuild build --flake .#mac   # build only — never switch the demo
+nixotine.url = "github:youruser/nixotine";
+# or a local checkout, while hacking on nixotine and the machine together
+# (path: needs an absolute path):
+# nixotine.url = "path:/Users/youruser/code/nixotine";
 ```
 
 ### Local identity and SSH files
