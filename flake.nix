@@ -31,27 +31,18 @@
       ...
     }:
     let
-      # Generic defaults shipped by upstream — see settings.nix.
-      defaults = import ./settings.nix;
-
-      # Drop-in overrides for the fork ("clone-and-tweak") path. Upstream never
-      # ships these files, so a fork can commit them and `git pull upstream
-      # main` never conflicts — and because the fork *tracks* them, pure eval
-      # still sees them (upstream: absent → pathExists false → defaults only).
-      #
-      #   settings.local.nix — override any subset of settings.nix
-      #   module.local.nix   — a darwin module appended to extraModules
-      localSettings =
-        if builtins.pathExists ./settings.local.nix then import ./settings.local.nix else { };
-      localModules = if builtins.pathExists ./module.local.nix then [ ./module.local.nix ] else [ ];
+      # This repo's settings: the generic defaults from settings.nix. The repo's
+      # own machine and the CI/demo target build from these; a consumer overrides
+      # them by passing arguments to mkDarwin (see the README, "Use as a flake
+      # library").
+      settings = import ./settings.nix;
 
       # The single rule for how overrides layer over a base: replace at the top
       # level, but merge the nested sets one level deep so a caller can set just
       # `git.userName` (or `ollama.model`, `linuxBuilder.cores`, …) without
       # restating the whole block. The merge is shallow, so a list-valued nested
-      # key like `git.hosts` is replaced wholesale, not concatenated. Used for
-      # BOTH the fork's settings.local.nix and a consumer's mkDarwin arguments,
-      # so the two override paths can never drift apart.
+      # key like `git.hosts` is replaced wholesale, not concatenated. Used for a
+      # consumer's mkDarwin arguments.
       nestedSets = [
         "git"
         "ollama"
@@ -69,9 +60,6 @@
             value = (base.${n} or { }) // (over.${n} or { });
           }) nestedSets
         );
-
-      # Fork overrides layered over upstream defaults.
-      settings = layerSettings defaults localSettings;
 
       # This repo's modules, in order. mkDarwin appends a consumer's
       # extraModules after these; list options (homebrew.casks,
@@ -146,9 +134,9 @@
               ;
             ollama = resolvedOllama;
 
-            # All flake inputs, so a fork's extraModules (module.local.nix) can pull
-            # packages from any input it adds — referenced as `inputs.<name>`,
-            # with no change to this call. See CONTRIBUTING.md.
+            # All flake inputs, so a fork's extraModules can pull packages from
+            # any input it adds — referenced as `inputs.<name>`, with no change
+            # to this call. See CONTRIBUTING.md.
             inherit inputs;
           };
           modules = baseModules ++ extraModules;
@@ -159,8 +147,8 @@
       lib.mkDarwin = mkDarwin;
 
       # This repo's own machine, and the CI/demo target. Built through the
-      # same mkDarwin from settings.nix (plus any fork-local drop-ins).
-      darwinConfigurations.${settings.hostname} = mkDarwin (settings // { extraModules = localModules; });
+      # same mkDarwin from the generic settings.nix.
+      darwinConfigurations.${settings.hostname} = mkDarwin settings;
 
       # Formatter for both the dev machine (aarch64-darwin) and the CI runner
       # (x86_64-linux, ubuntu-latest), so `nix fmt -- --check` works in both.
