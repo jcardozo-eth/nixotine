@@ -1,0 +1,55 @@
+# Common tasks for this configuration. Run `just` to list recipes.
+
+# Strict shell: abort a recipe on the first failing step.
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+# List recipes
+default:
+    @just --list
+
+# Resolve the host attribute name
+_host:
+    @nix eval --raw .#darwinConfigurations --apply 'c: builtins.head (builtins.attrNames c)'
+
+# Build configuration
+build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ "$OSTYPE" == darwin* ]] || { echo "error: build requires macOS (darwin)." >&2; exit 1; }
+    command -v darwin-rebuild >/dev/null 2>&1 || { echo "error: darwin-rebuild not on PATH." >&2; exit 1; }
+    darwin-rebuild build --flake ".#$(just _host)"
+
+# Apply configuration
+apply:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ "$OSTYPE" == darwin* ]] || { echo "error: apply requires macOS (darwin)." >&2; exit 1; }
+    command -v darwin-rebuild >/dev/null 2>&1 || { echo "error: darwin-rebuild not on PATH." >&2; exit 1; }
+    host=$(just _host)
+    echo "About to 'darwin-rebuild switch' host '${host}'."
+    echo "This activates the ENTIRE configuration on this machine: system settings,"
+    echo "packages, Homebrew casks, login shell, launchd agents, and git identity."
+    read -r -p "Continue? [y/N] " reply
+    [[ "$reply" == [yY] ]] || { echo "aborted."; exit 1; }
+    sudo darwin-rebuild switch --flake ".#${host}"
+
+# Print the derivation path
+eval:
+    nix eval ".#darwinConfigurations.$(just _host).system.drvPath"
+
+# Run flake checks
+check:
+    nix flake check
+    nix fmt -- --check .
+
+# Format Nix files
+fmt:
+    nix fmt
+
+# Update nixotine
+update:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    read -r -p "Update nixotine (rewrites flake.lock)? [y/N] " reply
+    [[ "$reply" == [yY] ]] || { echo "aborted."; exit 1; }
+    nix flake update nixotine
