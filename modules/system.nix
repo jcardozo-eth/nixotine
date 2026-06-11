@@ -43,6 +43,10 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  # Package overrides (see overlays/). Currently pins a newer upstream ollama
+  # than nixpkgs ships, required by the default model.
+  nixpkgs.overlays = import ../overlays.nix;
+
   # Set the build platform explicitly (otherwise inferred from the build host).
   nixpkgs.hostPlatform = system;
 }
