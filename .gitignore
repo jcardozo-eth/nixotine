@@ -3,3 +3,7 @@
 .direnv/
 result
 result-*
+
+# The consumer template ships no lock; Nix may regenerate one here when the
+# template flake is evaluated, but consumers generate (and track) their own.
+/templates/consumer/flake.lock

@@ -146,6 +146,22 @@
       # Library entry point for downstream consumers
       lib.mkDarwin = mkDarwin;
 
+      # Scaffold for downstream consumers. `nix flake init -t
+      # github:jcardozo-eth/nixotine#consumer` (or bare, via the default alias)
+      # copies a ready-to-edit consumer flake (flake.nix + settings.nix +
+      # module.nix + README) that pins this flake and calls mkDarwin.
+      templates =
+        let
+          consumer = {
+            path = ./templates/consumer;
+            description = "Consumer flake that pins nixotine and calls mkDarwin";
+          };
+        in
+        {
+          inherit consumer;
+          default = consumer;
+        };
+
       # This repo's own machine, and the CI/demo target. Built through the
       # same mkDarwin from the generic settings.nix.
       darwinConfigurations.${settings.hostname} = mkDarwin settings;
