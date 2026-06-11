@@ -21,6 +21,14 @@
       # nixpkgs so the dev outputs below add no extra flake input.
       system = "aarch64-darwin";
       pkgs = nixotine.inputs.nixpkgs.legacyPackages.${system};
+
+      # Pre-commit hook: format staged Nix files, so a push never fails on
+      # formatting. Reuses nixotine's git-hooks input (no extra input here); the
+      # devShell's shellHook installs it. Bypass with `git commit --no-verify`.
+      preCommitCheck = nixotine.inputs.git-hooks.lib.${system}.run {
+        src = ./.;
+        hooks.nixfmt-rfc-style.enable = true;
+      };
     in
     {
       # Settings live in settings.nix; casks and packages live in module.nix.
@@ -42,9 +50,11 @@
       formatter.${system} = nixotine.formatter.${system};
 
       # `nix develop` (or direnv via .envrc) puts `just` on PATH for the recipes
-      # in ./justfile — no global install needed.
+      # in ./justfile — no global install needed. Entering the shell also
+      # installs the pre-commit hook (shellHook) so staged Nix stays formatted.
       devShells.${system}.default = pkgs.mkShellNoCC {
-        packages = [ pkgs.just ];
+        packages = [ pkgs.just ] ++ preCommitCheck.enabledPackages;
+        shellHook = preCommitCheck.shellHook;
       };
     };
 }

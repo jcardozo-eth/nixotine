@@ -14,6 +14,14 @@
     # newer packages like typescript-go that aren't in nixpkgs-25.05, so do
     # NOT add an inputs.nixpkgs.follows here)
     pi-nix.url = "github:lukasl-dev/pi.nix";
+
+    # Pre-commit hooks (dev-only): installs a git hook that formats staged Nix
+    # files, so CI never fails on formatting. Wired into the devShell below.
+    # Deliberately NOT pinned to our nixpkgs: git-hooks' tool set references
+    # packages absent from nixpkgs-25.05 (e.g. cspell), so it uses its own
+    # validated nixpkgs. Its nixfmt is the same formatter `nix fmt` (nixfmt-tree)
+    # wraps, so the hook and the flake formatter produce identical output.
+    git-hooks.url = "github:cachix/git-hooks.nix";
   };
 
   outputs =
@@ -22,9 +30,26 @@
       nix-darwin,
       home-manager,
       pi-nix,
+      git-hooks,
       ...
     }:
     let
+      # Dev machine platform: the devShell and pre-commit hooks are macOS-only.
+      devSystem = "aarch64-darwin";
+      devPkgs = nixpkgs.legacyPackages.${devSystem};
+
+      # Pre-commit hook: format staged Nix files with nixfmt — the same tool
+      # `nix fmt` (nixfmt-tree) wraps, so output is identical. The hook only ever
+      # sees staged files, so it never touches the gitignored .direnv/ vendored
+      # sources. (We use the nixfmt-rfc-style hook rather than git-hooks' treefmt
+      # hook: the latter pulls a full treefmt whose dotnet-based formatters fail
+      # to build on this nixpkgs pin.) The devShell's shellHook installs it;
+      # bypass with `git commit --no-verify`.
+      preCommitCheck = git-hooks.lib.${devSystem}.run {
+        src = ./.;
+        hooks.nixfmt-rfc-style.enable = true;
+      };
+
       # This repo's settings: the generic defaults from settings.nix. The repo's
       # own machine and the CI/demo target build from these; a consumer overrides
       # them by passing arguments to mkDarwin (see the README, "Use as a flake
@@ -171,9 +196,11 @@
 
       # `nix develop` (or direnv via the tracked .envrc) puts `just` on PATH
       # for the repo's own tasks — no global install needed. Apple Silicon only,
-      # matching the configuration's target platform.
-      devShells.aarch64-darwin.default = nixpkgs.legacyPackages.aarch64-darwin.mkShellNoCC {
-        packages = [ nixpkgs.legacyPackages.aarch64-darwin.just ];
+      # matching the configuration's target platform. Entering the shell also
+      # installs the pre-commit hook (shellHook) so staged Nix stays formatted.
+      devShells.${devSystem}.default = devPkgs.mkShellNoCC {
+        packages = [ devPkgs.just ] ++ preCommitCheck.enabledPackages;
+        shellHook = preCommitCheck.shellHook;
       };
     };
 }
