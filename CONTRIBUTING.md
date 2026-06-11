@@ -26,7 +26,7 @@ Run the same checks CI does:
 
 ```sh
 nix flake check
-nix fmt -- --check .
+nix fmt -- --ci
 nix eval .#darwinConfigurations --apply 'c: (builtins.head (builtins.attrValues c)).system.drvPath'
 ```
 
@@ -55,7 +55,7 @@ repo healthy, all on Linux runners (no macOS build job yet):
 - **`check.yml`** — the PR gate. Runs on every push to `main` and every pull
   request:
   - `nix flake check`
-  - a format check (`nix fmt -- --check .`)
+  - a format check (`nix fmt -- --ci`)
   - an eval of the single configuration, resolved by value rather than by
     hostname
 - **`flake-update.yml`** — bumps `flake.lock`. Runs weekly, or on demand via
