@@ -8,7 +8,7 @@ conventions; everything machine- and user-specific is configurable, so it
 can be adopted wholesale, cherry-picked from, or used as inspiration. The
 public repo ships generic defaults and exports a `mkDarwin` builder, so it can be
 [used as a flake library](#use-as-a-flake-library) or
-[forked and customized](#customizing-a-fork).
+[forked](#forking-nixotine).
 
 > [!IMPORTANT]
 > Provided as is, without warranty, at the adopter's own risk. See
@@ -30,7 +30,7 @@ public repo ships generic defaults and exports a `mkDarwin` builder, so it can b
 - [Setup](#setup)
   - [Prerequisites](#prerequisites)
   - [Use as a flake library](#use-as-a-flake-library)
-  - [Customizing a fork](#customizing-a-fork)
+  - [Forking nixotine](#forking-nixotine)
   - [Applying the configuration](#applying-the-configuration)
   - [Local identity and SSH files](#local-identity-and-ssh-files)
 - [Architecture](#architecture)
@@ -157,15 +157,14 @@ from macOS via Apple's Virtualization framework. Its resources are sized in
 There are two ways to build on this configuration:
 
 - **[Use it as a flake library](#use-as-a-flake-library)** (recommended) — pin
-  nixotine as an input from a private flake. Settings, packages, and any extra
+  nixotine as an input from a separate flake. Settings, packages, and any extra
   flake inputs live in that flake's *own* repo, fully tracked and entirely
-  separate from nixotine, so updates never conflict and nixotine is never edited
-  at all. Best for almost everyone — and the cleanest path for contributors,
-  since the machine configuration stays out of the upstream repo.
-- **[Fork and customize it](#customizing-a-fork)** — work *inside* the repo,
-  overriding through drop-in files. Choose this only to work inside nixotine
-  itself; it carries a little more friction (the drop-ins are gitignored, so a
-  fork force-adds them).
+  separate from nixotine, so updates never conflict and nixotine is never edited.
+  Best for almost everyone, and the bundled `nix flake new` template scaffolds it.
+- **[Fork nixotine](#forking-nixotine)** — change nixotine *itself* (its modules
+  or defaults), to contribute upstream or run a personal variant. A fork holds no
+  machine configuration: a consumer flake points its `nixotine.url` at the fork
+  (or a local checkout) and keeps the machine configuration there.
 
 ### Use as a flake library
 
@@ -173,21 +172,35 @@ The recommended way to build on this configuration: pin it as an input from a
 private flake and call `mkDarwin` with the desired settings. Upstream files are never
 edited, so there are no merge conflicts; updates land by bumping the input.
 
+The quickest start is the bundled template, which scaffolds a ready-to-edit
+consumer flake — `flake.nix`, `settings.nix`, `module.nix`, and a short
+`README.md`:
+
+```sh
+nix flake new ~/cfg/nixotine-darwin -t github:jcardozo-eth/nixotine
+cd ~/cfg/nixotine-darwin
+# then edit settings.nix (username, system, git) and module.nix (casks, packages)
+```
+
+The named form `…/nixotine#consumer` is equivalent. The rest of this section
+explains what those scaffolded files contain; the same shape can also be written
+by hand.
+
 ```nix
 # example/flake.nix
 {
   inputs.nixotine.url = "github:jcardozo-eth/nixotine";
   outputs = { nixotine, ... }: {
     darwinConfigurations.mac = nixotine.lib.mkDarwin {
-      username = "you"; # required
+      username = "youruser"; # required
       system = "aarch64-darwin"; # required
       # Optional below — override any settings.nix default (partial is fine):
       git = {
-        userName = "You";
-        userEmail = "you@example.com";
+        userName = "yourgituser";
+        userEmail = "name@domain.com";
       };
       ollama = { model = "qwen3-coder:14b"; };
-      extraModules = [ ./module.local.nix ]; # extra casks/packages
+      extraModules = [ ./module.nix ]; # extra casks/packages
     };
   };
 }
@@ -199,12 +212,12 @@ because nix-darwin / Home Manager list options **merge**, casks and packages can
 be extended from a separate module without touching this repo:
 
 ```nix
-# example/module.local.nix
+# example/module.nix
 { pkgs, ... }:
 {
   # list options merge with the base, so these extend it rather than replace it
   homebrew.casks = [ "your-app" ];
-  home-manager.users.you.home.packages = [ pkgs.your-tool ];
+  home-manager.users.youruser.home.packages = [ pkgs.your-tool ];
 }
 ```
 
@@ -223,10 +236,10 @@ then thread it into the module with `_module.args`:
   inputs.some-flake.url = "github:owner/some-flake";
   outputs = { nixotine, some-flake, ... }: {
     darwinConfigurations.mac = nixotine.lib.mkDarwin {
-      username = "you";
+      username = "youruser";
       system = "aarch64-darwin";
       extraModules = [
-        ./module.local.nix
+        ./module.nix
         { _module.args.some-flake = some-flake; } # pass the extra input to modules
       ];
     };
@@ -234,97 +247,54 @@ then thread it into the module with `_module.args`:
 }
 ```
 
-`module.local.nix` then receives it as a module argument:
+`module.nix` then receives it as a module argument:
 
 ```nix
 { some-flake, pkgs, ... }:
 {
-  home-manager.users.you.home.packages = [
+  home-manager.users.youruser.home.packages = [
     some-flake.packages.${pkgs.system}.default
   ];
 }
 ```
 
-### Customizing a fork
+### Forking nixotine
 
-This path is for working *inside* the repo. For most simpler setups the
-[flake-library path](#use-as-a-flake-library) is cleaner (the configuration
-lives in a separate repo), so reach for a fork only to work inside nixotine
-itself.
+Fork nixotine to change the configuration *itself* (a module, a default, or a new
+generic feature), whether to contribute the change upstream or to run a personal
+variant. A fork is nixotine's own source; it holds no machine configuration.
 
-Customization happens through overrides, not edits to tracked files, so a `git
-pull` stays conflict-free: settings and extra modules live in two drop-in files
-that **upstream never ships** (`settings.local.nix` and `module.local.nix`).
-These are gitignored, so upstream never commits them by accident; the fork tracks
-them with an explicit `git add -f` (the commit step below) so the flake, which
-only sees *tracked* files, picks them up. No `--impure` needed.
+Running a machine on a forked nixotine keeps two repositories:
 
-**Setup**
-
-1. Fork the repo and add upstream as a remote:
+1. **The fork** — the changed nixotine. Add `upstream` as a remote to pull in
+   later improvements:
 
    ```sh
    git remote add upstream https://github.com/jcardozo-eth/nixotine
    ```
 
-2. Scaffold the two drop-in override files from templates:
-
-   ```sh
-   just init-local   # creates settings.local.nix and module.local.nix (skips any that exist)
-   ```
-
-3. Edit `settings.local.nix` to override any subset of `settings.nix`. The
-   nested `git` / `ollama` / `linuxBuilder` / `zsh` sets merge one level deep, so
-   just `ollama.model` can be set without restating the rest:
+2. **A consumer flake** — the machine configuration, scaffolded from the
+   [template](#use-as-a-flake-library). Point its `nixotine.url` at the fork
+   instead of upstream:
 
    ```nix
-   {
-     username = "you";
-     hostname = "your-host";
-     git = { userName = "You"; userEmail = "you@example.com"; };
-   }
+   nixotine.url = "github:youruser/nixotine";
+   # or, while hacking on nixotine and the machine together, a local checkout:
+   # nixotine.url = "path:/home/youruser/cfg/nixotine";
    ```
 
-4. Edit `module.local.nix` for the fork's own casks/packages. It is a darwin module
-   appended to `extraModules`, and because nix-darwin / Home Manager list options
-   **merge**, it extends the base lists without editing any tracked module:
-
-   ```nix
-   { pkgs, ... }:
-   {
-     homebrew.casks = [ "your-app" ];
-     home-manager.users.you.home.packages = [ pkgs.your-tool ];
-   }
-   ```
-
-Then force-add and commit both; they're gitignored, so a plain `git add` skips
-them; force-adding tracks them in the fork (required, since the flake only sees
-tracked files):
-
-```sh
-git add -f settings.local.nix module.local.nix
-git commit -m "chore: local machine configuration"
-```
-
-They behave like normal tracked files afterward. `settings.nix` and `flake.nix`
-are never edited, so they don't conflict on `git pull`.
-
-> [!NOTE]
-> Committing the drop-ins records the machine's package and cask list, hostname,
-> and any overridden git identity in history; a contributor fork touching only
-> tracked modules carries none of this. Per-host identities and signing keys stay
-> out of the repo either way. See the [callout above](#nixotine) before pushing a
-> fork to a public remote.
+Settings, casks, and packages live in the consumer flake exactly as for any
+consumer; only the nixotine source differs. A change to nixotine reaches the
+machine on the next `nix flake update nixotine`.
 
 **Tasks**
 
-`just` (on PATH via `nix develop` or direnv) wraps the common workflow. The
-target host comes from the effective configuration, so `settings.local.nix`'s
-`hostname` is respected.
+`just` (on PATH via `nix develop` or direnv) wraps the common workflow when
+working inside the fork. The target host comes from the effective
+configuration's `settings.nix` hostname.
 
 | Recipe | Action |
 |--------|--------|
-| `just init-local` | scaffold `settings.local.nix` + `module.local.nix` |
 | `just build` | build the configuration without switching |
 | `just apply` | activate the configuration |
 | `just eval` | print the system derivation path |
@@ -333,43 +303,31 @@ target host comes from the effective configuration, so `settings.local.nix`'s
 | `just update` | update flake inputs |
 | `just sync` | `git pull upstream main` |
 
-**Packages from another flake**
+**Adding a flake input to the fork**
 
-If pulling extra packages — from `nixpkgs` *or* another flake — is the only
-customization, the [flake-library path](#use-as-a-flake-library) is cleaner: the
-extra input goes in the consumer's own flake and nixotine is never edited. Inside
-a fork it is a touch more involved, because a flake's inputs must be declared
-literally in its own `flake.nix` (they are fetched before evaluation, so unlike
-`settings.local.nix` / `module.local.nix` they can't be moved to a drop-in file).
-
-`settings.local.nix` and `module.local.nix` still cover everything from `nixpkgs`
-with no edit to `flake.nix`. To use a package from a *different* flake, there is
-exactly **one** edit: add the input in the **fork-local inputs** region of
-`flake.nix`:
+An input that a fork's *own module* uses (because the feature belongs in nixotine
+itself) is declared in the fork's `flake.nix` `inputs`. Every input is threaded
+into the modules as the `inputs` argument, so a module references it as
+`inputs.<name>`, with no call-site or wiring change:
 
 ```nix
 inputs = {
-  # … upstream inputs (don't touch) …
-
-  # ── Fork-local inputs ──
+  # … existing inputs …
   some-flake.url = "github:owner/some-flake";
 };
 ```
 
-Every input is threaded into the modules as the `inputs` argument, so reference
-it straight from `module.local.nix`, with no call-site or wiring change:
-
 ```nix
 { inputs, pkgs, ... }:
 {
-  home-manager.users.you.home.packages = [
+  home-manager.users.youruser.home.packages = [
     inputs.some-flake.packages.${pkgs.system}.default
   ];
 }
 ```
 
-That single input line is the only edit a fork makes to `flake.nix`; it lives in
-a region upstream keeps empty, so `git pull` does not conflict on it.
+A package for a single machine does not belong in the fork: declare that input in
+the consumer flake instead (see the consumer template's `README.md`).
 
 ### Applying the configuration
 
@@ -402,16 +360,16 @@ The tracked modules wire up only the *mechanism* — `git` and `ssh` silently sk
 includes whose files are absent — so each is **optional**. Copy-paste templates
 follow; replace the placeholders.
 
-**Per-host git identity.** `git.nix` routes each host in `settings.git.hosts` to
-`~/.config/git/<file>` via
+**Per-host git identity.** Add a host to `git.hosts` (in the consumer flake's
+`settings.nix`), and `git.nix` routes it to `~/.config/git/<file>` via
 `includeIf`, so the right name and email are selected automatically per host.
 Drop a `[user]` block in the matching file:
 
 ```ini
 # ~/.config/git/github.gitconfig
 [user]
-  name  = Your Name
-  email = you@personal.example
+  name  = yourgituser
+  email = name@personal.example
 ```
 
 For hosts not in `settings.git.hosts` (e.g. a self-hosted organization GitLab
@@ -453,16 +411,15 @@ Host github.com
 
 The pieces fit together like this:
 
-- **`settings.nix`** holds the tunable values (user, host, `git`, `ollama`,
-  `linuxBuilder`, `zsh`, `homebrew`). It's the only file to edit to adapt the
-  configuration.
+- **`settings.nix`** holds the upstream's generic default values (user, host,
+  `git`, `ollama`, `linuxBuilder`, `zsh`, `homebrew`); a consumer overrides them
+  through `mkDarwin` arguments rather than editing this file.
 - **`flake.nix`** imports those settings, derives the home directory and
   `darwin-rebuild` target, and builds the system through `mkDarwin` — the base
   modules plus any `extraModules`, with list options (casks, packages) merging
   across modules.
 - **Overrides** layer over the defaults through one shared, one-level-deep merge,
-  whether they come from a fork's `settings.local.nix` or a consumer's `mkDarwin`
-  arguments, so both paths behave identically.
+  applied to a consumer's `mkDarwin` arguments.
 
 ### Module layout
 
@@ -479,8 +436,8 @@ The pieces fit together like this:
 - **`modules/homebrew.nix`** — the Homebrew (casks) integration.
 - **`modules/llm.nix`** — the Pi agent, the Ollama launchd service, and Node 24.
 
-A consumer's `extraModules` (or a fork's `module.local.nix`) are appended after
-these, and list options merge across all of them.
+A consumer's `extraModules` are appended after these, and list options merge
+across all of them.
 
 ### Platform (Apple Silicon)
 

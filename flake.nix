@@ -14,12 +14,6 @@
     # newer packages like typescript-go that aren't in nixpkgs-25.05, so do
     # NOT add an inputs.nixpkgs.follows here)
     pi-nix.url = "github:lukasl-dev/pi.nix";
-
-    # ── Fork-local inputs ──────────────────────────────────────────────────
-    # Upstream keeps this region empty. In a fork, add extra flakes here (e.g.
-    # claude-code-nix, devenv). Every input is threaded to a fork's modules via the
-    # `inputs` arg (see CONTRIBUTING.md), so adding the line below is the ONLY
-    # edit a fork makes to this file — no call-site or wiring changes.
   };
 
   outputs =
@@ -34,7 +28,7 @@
       # This repo's settings: the generic defaults from settings.nix. The repo's
       # own machine and the CI/demo target build from these; a consumer overrides
       # them by passing arguments to mkDarwin (see the README, "Use as a flake
-      # library").
+      # library": https://github.com/jcardozo-eth/nixotine#use-as-a-flake-library).
       settings = import ./settings.nix;
 
       # The single rule for how overrides layer over a base: replace at the top
