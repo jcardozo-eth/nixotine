@@ -201,7 +201,7 @@ required; any other key overrides a nixotine default (partial is fine):
     userName = "yourgituser";
     userEmail = "name@domain.com";
   };
-  # ollama.model = "qwen3-coder:14b";
+  # ollama.model = "qwen3-coder:30b";
 }
 ```
 
