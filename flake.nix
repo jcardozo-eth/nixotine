@@ -2,12 +2,12 @@
   description = "An opinionated and reusable nix-darwin + Home Manager configuration for macOS";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.05-darwin";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
-    nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.05";
+    nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    home-manager.url = "github:nix-community/home-manager/release-25.05";
+    home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     # Pi coding agent (pins its own nixpkgs deliberately — pi's package needs
