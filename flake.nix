@@ -10,10 +10,12 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Pi coding agent (pins its own nixpkgs deliberately — pi's package needs
-    # newer packages like typescript-go that aren't in nixpkgs-25.05, so do
-    # NOT add an inputs.nixpkgs.follows here)
+    # Pi coding agent. Follows the flake's nixpkgs: 26.05 carries everything
+    # pi builds against (e.g. typescript-go). Trade-off: pi builds from source
+    # instead of fetching prebuilt from pi.cachix.org, but only on a deliberate
+    # update.
     pi-nix.url = "github:lukasl-dev/pi.nix";
+    pi-nix.inputs.nixpkgs.follows = "nixpkgs";
 
     # Pre-commit hooks (dev-only): installs a git hook that formats staged Nix
     # files, so CI never fails on formatting. Wired into the devShell below.
