@@ -17,13 +17,12 @@
     pi-nix.url = "github:lukasl-dev/pi.nix";
     pi-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Pre-commit hooks (dev-only): installs a git hook that formats staged Nix
-    # files, so CI never fails on formatting. Wired into the devShell below.
-    # Deliberately NOT pinned to our nixpkgs: git-hooks' tool set references
-    # packages absent from nixpkgs-25.05 (e.g. cspell), so it uses its own
-    # validated nixpkgs. Its nixfmt is the same formatter `nix fmt` (nixfmt-tree)
-    # wraps, so the hook and the flake formatter produce identical output.
+    # Pre-commit hooks (dev-only): a git hook formats staged Nix files so CI
+    # never fails on formatting. Wired into the devShell below. Follows the
+    # flake's nixpkgs — only the nixfmt hook is enabled, so it runs the same
+    # nixfmt `nix fmt` uses, with no separate pin to maintain.
     git-hooks.url = "github:cachix/git-hooks.nix";
+    git-hooks.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
